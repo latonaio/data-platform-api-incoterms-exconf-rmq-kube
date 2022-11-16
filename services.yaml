@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    run: data-platform-api-incoterms-exconf-rmq-kube
+  name: data-platform-api-incoterms-exconf-rmq-kube
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: data-platform-api-incoterms-exconf-rmq-kube
+      app: INCOTERMS
+  template:
+    metadata:
+      labels:
+        run: data-platform-api-incoterms-exconf-rmq-kube
+        app: INCOTERMS
+    spec:
+      nodeName: workerincoterms
+      hostname: data-platform-api-incoterms-exconf-rmq-kube
+      containers:
+        - name: data-platform-api-incoterms-exconf-rmq-kube
+          image: latonaio/data-platform-api-incoterms-exconf-rmq-kube
+          imagePullPolicy: Always
+          env:
+            - name : "RMQ_QUEUE_FROM"
+              value: "data-platform-api-incoterms-exconf-queue"
+            - name : "RMQ_QUEUE_TO"
+              value: "data-platform-api-incoterms-exconf-queue"
+            - name : "MYSQL_DB_NAME"
+              value: "DataPlatformMastersAndTransactionsMysqlKube"
+          envFrom:
+            - configMapRef:
+                name: env-config
+            - secretRef:
+                name: env-secret
+      volumes:
+        - name: data
+          hostPath:
+            path: /var/lib/aion/default/Data
+        - name: ui
+          hostPath:
+            path: /var/lib/aion/UI/data-platform-api-incoterms-exconf-rmq-kube/public/
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: data-platform-api-incoterms-exconf-rmq-kube
+  name: data-platform-api-incoterms-exconf-rmq-kube
+spec:
+  selector:
+    run: data-platform-api-incoterms-exconf-rmq-kube
+  type: NodePort
+  ports:
+    - name: api
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+      nodePort: 30802

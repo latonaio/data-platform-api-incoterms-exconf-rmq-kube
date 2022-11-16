@@ -1,0 +1,17 @@
+{
+	"connection_key": "request",
+	"result": true,
+	"redis_key": "abcdefg",
+	"api_status_code": 200,
+	"runtime_session_id": "boi9ar543dg91ipdnspi099u231280ab0v8af0ew",
+	"business_partner": 201,
+	"filepath": "/var/lib/aion/Data/rededge_sdc/abcdef.json",
+	"service_label": "ORDERS",
+	"Incoterms": {
+		"Incoterms": "YRN"
+	},
+	"api_schema": "DPFMOrdersCreates",
+	"accepter": ["All"],
+	"order_id": null,
+	"deleted": false
+}

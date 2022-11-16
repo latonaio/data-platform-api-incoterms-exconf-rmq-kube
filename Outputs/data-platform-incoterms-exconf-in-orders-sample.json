@@ -1,0 +1,13 @@
+{
+	"cursor": "/Users/latona2/bitbucket/data-platform-api-incoterms-exconf-rmq-kube/main.go#L69",
+	"function": "main.dataCallProcess",
+	"level": "INFO",
+	"message": {
+		"Incoterms": {
+			"Incoterms": "CIF",
+			"ExistenceConf": true
+		}
+	},
+	"runtime_session_id": "boi9ar543dg91ipdnspi099u231280ab0v8af0ew",
+	"time": "2022-11-17T01:48:21+09:00"
+}
