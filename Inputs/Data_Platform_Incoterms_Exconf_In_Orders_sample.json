@@ -8,7 +8,7 @@
 	"filepath": "/var/lib/aion/Data/rededge_sdc/abcdef.json",
 	"service_label": "ORDERS",
 	"Incoterms": {
-		"Incoterms": "YRN"
+		"Incoterms": "CIF"
 	},
 	"api_schema": "DPFMOrdersCreates",
 	"accepter": ["All"],

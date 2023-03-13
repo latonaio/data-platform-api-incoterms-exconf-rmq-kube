@@ -3,14 +3,12 @@ package main
 import (
 	"context"
 	dpfm_api_caller "data-platform-api-incoterms-exconf-rmq-kube/DPFM_API_Caller"
-	dpfm_api_input_reader "data-platform-api-incoterms-exconf-rmq-kube/DPFM_API_Input_Reader"
 	dpfm_api_output_formatter "data-platform-api-incoterms-exconf-rmq-kube/DPFM_API_Output_Formatter"
 	"data-platform-api-incoterms-exconf-rmq-kube/config"
-	"data-platform-api-incoterms-exconf-rmq-kube/database"
-	"encoding/json"
 	"fmt"
 
 	"github.com/latonaio/golang-logging-library-for-data-platform/logger"
+	database "github.com/latonaio/golang-mysql-network-connector"
 	rabbitmq "github.com/latonaio/rabbitmq-golang-client-for-data-platform"
 )
 
@@ -48,25 +46,17 @@ func dataCallProcess(
 	l := logger.NewLogger()
 	sessionId := getBodyHeader(rmqMsg.Data())
 	l.AddHeaderInfo(map[string]interface{}{"runtime_session_id": sessionId})
-	input := &dpfm_api_input_reader.SDC{}
-	err := json.Unmarshal(rmqMsg.Raw(), input)
-	if err != nil {
-		l.Error(rmqMsg.Data())
-		return
-	}
-
 	conf := dpfm_api_caller.NewExistenceConf(ctx, db, l)
-	exist := conf.Conf(input)
+	exist := conf.Conf(rmqMsg)
 	rmqMsg.Respond(exist)
 
-	out := dpfm_api_output_formatter.MetaData{}
-	err = json.Unmarshal(rmqMsg.Raw(), &out)
+	output, err := dpfm_api_output_formatter.NewOutput(rmqMsg, exist)
 	if err != nil {
-		l.Error(rmqMsg.Data())
+		l.Error(err)
 		return
 	}
-	out.Incoterms = *exist
-	l.Info(out)
+
+	l.JsonParseOut(output)
 }
 
 func getBodyHeader(data map[string]interface{}) string {

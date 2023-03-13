@@ -4,10 +4,12 @@ import (
 	"context"
 	dpfm_api_input_reader "data-platform-api-incoterms-exconf-rmq-kube/DPFM_API_Input_Reader"
 	dpfm_api_output_formatter "data-platform-api-incoterms-exconf-rmq-kube/DPFM_API_Output_Formatter"
-	"data-platform-api-incoterms-exconf-rmq-kube/database"
-	"sync"
+	"encoding/json"
 
 	"github.com/latonaio/golang-logging-library-for-data-platform/logger"
+	database "github.com/latonaio/golang-mysql-network-connector"
+	rabbitmq "github.com/latonaio/rabbitmq-golang-client-for-data-platform"
+	"golang.org/x/xerrors"
 )
 
 type ExistenceConf struct {
@@ -24,61 +26,56 @@ func NewExistenceConf(ctx context.Context, db *database.Mysql, l *logger.Logger)
 	}
 }
 
-func (e *ExistenceConf) Conf(input *dpfm_api_input_reader.SDC) *dpfm_api_output_formatter.Incoterms {
-	incoterms := *input.Incoterms.Incoterms
-	notKeyExistence := make([]string, 0, 1)
-	KeyExistence := make([]string, 0, 1)
+func (e *ExistenceConf) Conf(msg rabbitmq.RabbitmqMessage) interface{} {
+	var ret interface{}
+	ret = map[string]interface{}{
+		"ExistenceConf": false,
+	}
+	input := make(map[string]interface{})
+	err := json.Unmarshal(msg.Raw(), &input)
+	if err != nil {
+		return ret
+	}
 
-	existData := &dpfm_api_output_formatter.Incoterms{
-		Incoterms:     incoterms,
+	_, ok := input["Incoterms"]
+	if ok {
+		input := &dpfm_api_input_reader.SDC{}
+		err = json.Unmarshal(msg.Raw(), input)
+		ret = e.confIncoterms(input)
+		goto endProcess
+	}
+
+	err = xerrors.Errorf("can not get exconf check target")
+endProcess:
+	if err != nil {
+		e.l.Error(err)
+	}
+	return ret
+}
+
+func (e *ExistenceConf) confIncoterms(input *dpfm_api_input_reader.SDC) *dpfm_api_output_formatter.Incoterms {
+	exconf := dpfm_api_output_formatter.Incoterms{
+		ExistenceConf: false,
+	}
+	if input.Incoterms.Incoterms == nil {
+		return &exconf
+	}
+	exconf = dpfm_api_output_formatter.Incoterms{
+		Incoterms:     *input.Incoterms.Incoterms,
 		ExistenceConf: false,
 	}
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if !e.confIncoterms(incoterms) {
-			notKeyExistence = append(notKeyExistence, incoterms)
-			return
-		}
-		KeyExistence = append(KeyExistence, incoterms)
-	}()
-
-	wg.Wait()
-
-	if len(KeyExistence) == 0 {
-		return existData
-	}
-	if len(notKeyExistence) > 0 {
-		return existData
-	}
-
-	existData.ExistenceConf = true
-	return existData
-}
-
-func (e *ExistenceConf) confIncoterms(val string) bool {
 	rows, err := e.db.Query(
 		`SELECT Incoterms 
 		FROM DataPlatformMastersAndTransactionsMysqlKube.data_platform_incoterms_incoterms_data 
-		WHERE Incoterms = ?;`, val,
+		WHERE Incoterms = ?;`, exconf.Incoterms,
 	)
 	if err != nil {
 		e.l.Error(err)
-		return false
+		return &exconf
 	}
+	defer rows.Close()
 
-	for rows.Next() {
-		var incoterms string
-		err := rows.Scan(&incoterms)
-		if err != nil {
-			e.l.Error(err)
-			continue
-		}
-		if incoterms == val {
-			return true
-		}
-	}
-	return false
+	exconf.ExistenceConf = rows.Next()
+	return &exconf
 }
